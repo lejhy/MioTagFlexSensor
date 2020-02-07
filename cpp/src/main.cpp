@@ -71,7 +71,6 @@ void loop() {
         float ax, ay, az; // acclerometer reading is already in G / sec
         float gx, gy, gz; // gyroscope reading is already in degrees / sec
         float mx, my, mz; // magnetic field in micro teslas uT
-        float roll, pitch, heading;
 
         micros_now = micros();
         if (micros_now - micros_previous >= micros_per_reading) {
@@ -83,7 +82,7 @@ void loop() {
 
             Roll.writeValue(filter.getRoll());
             Pitch.writeValue(filter.getPitch());
-            Yar.writeValue(filter.getYaw());
+            Yaw.writeValue(filter.getYaw());
 
             micros_previous = micros_previous + micros_per_reading;
         }
