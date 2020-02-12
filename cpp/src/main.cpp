@@ -6,8 +6,7 @@
 Madgwick filter;
 const unsigned long imu_frequency = 119;
 const unsigned long micros_per_reading = 1000000 / imu_frequency;
-unsigned long micros_previous;
-unsigned long micros_now;
+unsigned long micros_previous_reading;
 
 //defines the two services used
 BLEService fingerService("19B10000-E8F2-537E-4F6C-D104768A1214");
@@ -27,7 +26,7 @@ BLEIntCharacteristic Yaw("19B10009-E8F2-537E-4F6C-D104768A1214", BLERead | BLENo
 const int ledPin = LED_BUILTIN;
 
 void setup() {
-    Serial.begin(115200);
+    Serial.begin(9600);
     pinMode(ledPin, OUTPUT);
     // setup BLE and IMU
     if (!BLE.begin()) {
@@ -55,8 +54,14 @@ void setup() {
     BLE.advertise();
     // start filter
     filter.begin(imu_frequency);
-    micros_previous = micros();
+    // start timer
+    micros_previous_reading = micros();
 }
+
+// IMU
+float ax, ay, az; // acclerometer reading is already in G / sec
+float gx, gy, gz; // gyroscope reading is already in degrees / sec
+float mx, my, mz; // magnetic field in micro teslas uT
 
 void loop() {
     // listen for BLE peripherals to connect:
@@ -67,27 +72,33 @@ void loop() {
       digitalWrite(ledPin,HIGH);
       // while the central is still connected to peripheral:
       while (central.connected()) {
-        // IMU
-        float ax, ay, az; // acclerometer reading is already in G / sec
-        float gx, gy, gz; // gyroscope reading is already in degrees / sec
-        float mx, my, mz; // magnetic field in micro teslas uT
 
-        micros_now = micros();
-        if (micros_now - micros_previous >= micros_per_reading) {
+        if (micros() - micros_previous_reading >= micros_per_reading) {
             IMU.readAcceleration(ax, ay, az);
             IMU.readGyroscope(gx, gy, gz);
             IMU.readMagneticField(mx, my, mz);
 
             filter.update(gx, gy, gz, ax, ay, az, mx, my, mz); // for all 3
 
-            Roll.writeValue(filter.getRoll());
-            Pitch.writeValue(filter.getPitch());
-            Yaw.writeValue(filter.getYaw());
+            float roll = filter.getRoll();
+            float pitch = filter.getPitch();
+            float yaw = filter.getYaw();
 
-            micros_previous = micros_previous + micros_per_reading;
+            Serial.print("ROLL: ");
+            Serial.print(roll);
+            Serial.print(" | PITCH: ");
+            Serial.print(pitch);
+            Serial.print(" | YAW: ");
+            Serial.println(yaw);
+
+            Roll.writeValue(roll);
+            Pitch.writeValue(pitch);
+            Yaw.writeValue(yaw);
+
+            micros_previous_reading = micros_previous_reading + micros_per_reading;
         }
       }
       // when the central disconnects, switch the LED off
       digitalWrite(ledPin,LOW);
-    }
+  }
 }
