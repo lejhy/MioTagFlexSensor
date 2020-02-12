@@ -3,7 +3,7 @@
 #include <ArduinoBLE.h>
 
 //defines the two services used
-BLEService fingerService("19B10000-E8F2-537E-4F6C-D104768A1214"); 
+BLEService fingerService("19B10000-E8F2-537E-4F6C-D104768A1214");
 BLEService IMUService("19B10001-E8F2-537E-4F6C-D104768A1214");
 
 // defines all the characteristics used
@@ -23,19 +23,18 @@ BLEIntCharacteristic MagY("19B10014-E8F2-537E-4F6C-D104768A1214", BLERead | BLEN
 BLEIntCharacteristic MagZ("19B10015-E8F2-537E-4F6C-D104768A1214", BLERead | BLENotify);
 
 // sets up LED pin used to indicate a connection to a central
-const int ledPin = LED_BUILTIN; 
+const int ledPin = LED_BUILTIN;
 
 void setup() {
   // begins the serial monitor
-  Serial.begin(9600);
-  
+  Serial.begin(1000);
+
   // set LED pin to output mode
-  pinMode(ledPin, OUTPUT);                              
+  pinMode(ledPin, OUTPUT);
 
   // begin initialization
   if (!BLE.begin()) {
-
-    while (1);                                                                         
+    while (1);
   }
 
   // starts the IMU and checks to make sure it is successful
@@ -43,9 +42,10 @@ void setup() {
     Serial.println("Failed to initialize IMU!");
     while (1);
   }
-  
+
   // set advertised device name as MIOTAG
   BLE.setDeviceName("MIOTAG");
+  BLE.setLocalName("MIOTAG");
 
   // adds the characteristics to the appropriate services
   fingerService.addCharacteristic(Pinkie);
@@ -62,33 +62,29 @@ void setup() {
   IMUService.addCharacteristic(MagX);
   IMUService.addCharacteristic(MagY);
   IMUService.addCharacteristic(MagZ);
-  
+
   // adds the services to the profile
   BLE.addService(fingerService);
   BLE.addService(IMUService);
 
-  // advertises the device after everything has been set up 
+  // advertises the device after everything has been set up
   BLE.advertise();
-
 }
-                                                                                    
+
 void loop() {
-  
   // listen for BLE peripherals to connect:
   BLEDevice central = BLE.central();
-  
+  // history of imu
+  float prevIMU[9] = { 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+
   // if a central is connected to peripheral:
   if (central) {
-
     // switch the LED on
     digitalWrite(ledPin,HIGH);
-
-
     // while the central is still connected to peripheral:
     while (central.connected()) {
-
       // call the other loops to update the noticeboard
-      updateIMU();
+      updateIMU(prevIMU);
       updateFinger();
     }
 
@@ -96,8 +92,8 @@ void loop() {
     digitalWrite(ledPin,LOW);
   }
 }
-                                                                                    
-void updateIMU() {
+
+void updateIMU(float prevIMU[]) {
 
   // sets up floats to take 9 axis values
   float x, y, z, x1, y1, z1, x2, y2, z2;
@@ -108,7 +104,7 @@ void updateIMU() {
     IMU.readGyroscope(x1, y1, z1);
     IMU.readMagneticField(x2, y2, z2);
 
-    // since all values are between -1 and 1, 
+    // since all values are between -1 and 1,
     // multiply this by 100 and round to the nearest whole number
     x = round(x*100);
     y = round(y*100);
@@ -132,15 +128,43 @@ void updateIMU() {
     float zvalue2 = map(z2, -100, 100, 1, 100);
 
     // write new values to the characteristic to be updated
-    AccX.writeValue(xvalue);
-    AccY.writeValue(yvalue);
-    AccZ.writeValue(zvalue);
-    GyroX.writeValue(xvalue1);
-    GyroY.writeValue(yvalue1);
-    GyroZ.writeValue(zvalue1);
-    MagX.writeValue(xvalue2);
-    MagY.writeValue(yvalue2);
-    MagZ.writeValue(zvalue2);
+    // update only when new values are read
+    if (prevIMU[0] != xvalue) {
+      AccX.writeValue(xvalue);
+      prevIMU[0] = xvalue;
+    }
+    if (prevIMU[1] != yvalue) {
+      AccY.writeValue(yvalue);
+      prevIMU[1] = yvalue;
+    }
+    if (prevIMU[2] != zvalue) {
+      AccZ.writeValue(zvalue);
+      prevIMU[2] = zvalue;
+    }
+    if (prevIMU[3] != xvalue1) {
+      GyroX.writeValue(xvalue1);
+      prevIMU[3] = xvalue1;
+    }
+    if (prevIMU[4] != yvalue1) {
+      GyroY.writeValue(yvalue1);
+      prevIMU[4] = yvalue1;
+    }
+    if (prevIMU[5] != zvalue1) {
+      GyroZ.writeValue(zvalue1);
+      prevIMU[5] = zvalue1;
+    }
+    if (prevIMU[6] != xvalue2) {
+      MagX.writeValue(xvalue2);
+      prevIMU[6] = xvalue2;
+    }
+    if (prevIMU[7] != yvalue2) {
+      MagY.writeValue(yvalue2);
+      prevIMU[7] = yvalue2;
+    }
+    if (prevIMU[8] != zvalue2) {
+      MagZ.writeValue(zvalue2);
+      prevIMU[8] = zvalue2;
+    }
   }
 }
 
@@ -152,5 +176,5 @@ void updateFinger() {
   middleFinger = analogRead(A0);
   middleFinger = map(middleFinger, 500, 700, 1, 100);
   Middle.writeValue(middleFinger);
-  
+
 }
