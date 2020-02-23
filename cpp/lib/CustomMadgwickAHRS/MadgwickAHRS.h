@@ -23,13 +23,13 @@
 class Madgwick{
 public: 
     float invSampleFreq;
-private:
-    static float invSqrt(float x);
-    float beta;				// algorithm gain
     float q0;
     float q1;
     float q2;
     float q3;	// quaternion of sensor frame relative to auxiliary frame
+    float beta;				// algorithm gain
+private:
+    static float invSqrt(float x);
     float roll;
     float pitch;
     float yaw;
@@ -56,7 +56,7 @@ public:
     }
     float getYaw() {
         if (!anglesComputed) computeAngles();
-        return yaw * 57.29578f + 180.0f;
+        return yaw * 57.29578f;
     }
     float getRollRadians() {
         if (!anglesComputed) computeAngles();
