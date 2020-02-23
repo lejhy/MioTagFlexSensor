@@ -82,17 +82,22 @@ void loop() {
         // filter.update(gx, gy, -gz, -ax, -ay, az, -1, 0, 0); // Could also set arbitraty earth pole to always point forward
 
         // Send accelerometer edited to correspond to our little reordering and fixing of the coordinate system
+        // X-axis points forward, Y-axis to the right and Z-axis downward
         package.values[0] = -ax*100;
         package.values[1] = -ay*100;
         package.values[2] = az*100;
+
         // Now send the adjusted rotation data (yaw has now been fixed in library to be +-180 like the rest)
+        // X-axis points forward, Y-axis to the right and Z-axis downward
         package.values[3] = -filter.getRoll();
         package.values[4] = -filter.getPitch();
         package.values[5] = filter.getYaw();
+
         // Now send the fingers yo!
         // TODO
 
         // Also send quaternion data in the adjusted order for those that dare listen
+        // THREE JS Coordinate System where X-axis points to the right, Y-axis upward and Z-axis backward
         FloatPackage quaternions;
         quaternions.values[0] = filter.q1;
         quaternions.values[1] = filter.q0;
@@ -107,19 +112,7 @@ void loop() {
         Serial.print(" | GY: ");
         Serial.print(gy);
         Serial.print(" | GZ: ");
-        Serial.print(gz);
-        Serial.print(" | AX: ");
-        Serial.print(ax);
-        Serial.print(" | AY: ");
-        Serial.print(ay);
-        Serial.print(" | AZ: ");
-        Serial.print(az);
-        Serial.print(" | ROLL: ");
-        Serial.print(filter.getRoll());
-        Serial.print(" | PITCH: ");
-        Serial.print(filter.getPitch());
-        Serial.print(" | YAW: ");
-        Serial.println(filter.getYaw());
+        Serial.println(gz);
 
         characteristic.writeValue(package.bytes, 12);
         characteristicQuaternions.writeValue(quaternions.bytes, 16);
