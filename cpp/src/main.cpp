@@ -3,14 +3,19 @@
 #include <MadgwickAHRS.h>
 #include <ArduinoBLE.h>
 
-union IntPackage {
-  int16_t values[10];
-  byte bytes[20]; // This is the maximum supported by React Native
+struct ImuAndFingers {
+  int16_t imu[6];
+  u_int8_t fingers[5];
 };
 
-union FloatPackage {
-  float values[5];
-  byte bytes[20];
+union ImuAndFingersPackage {
+  ImuAndFingers values;
+  byte bytes[17];
+};
+
+union QuaternionsPackage {
+  float values[4];
+  byte bytes[16];
 };
 
 Madgwick filter;
@@ -20,7 +25,7 @@ unsigned long micros_previous_reading;
 BLEService service("19B10000-E8F2-537E-4F6C-D104768A1214");
 
 // defines all the characteristics used
-BLECharacteristic characteristic("19B10001-E8F2-537E-4F6C-D104768A1214", BLENotify, 20);
+BLECharacteristic characteristicImuAndFingers("19B10001-E8F2-537E-4F6C-D104768A1214", BLENotify, 20);
 BLECharacteristic characteristicQuaternions("19B10002-E8F2-537E-4F6C-D104768A1214", BLENotify, 20);
 
 // sets up LED pin used to indicate a connection to a central
@@ -40,7 +45,7 @@ void setup() {
   BLE.setDeviceName("MIOTAG");
   BLE.setLocalName("MIOTAG");
   // adds the characteristics to the appropriate services
-  service.addCharacteristic(characteristic);
+  service.addCharacteristic(characteristicImuAndFingers);
   service.addCharacteristic(characteristicQuaternions);
   // adds the services to the profile
   BLE.addService(service);
@@ -68,7 +73,6 @@ void loop() {
     while (central.connected()) {
 
       if (IMU.accelerationAvailable() && IMU.gyroscopeAvailable()) {
-        IntPackage package;
         IMU.readAcceleration(ax, ay, az);
         IMU.readGyroscope(gx, gy, gz);
         IMU.readMagneticField(mx, my, mz);
@@ -83,39 +87,36 @@ void loop() {
 
         // Send accelerometer edited to correspond to our little reordering and fixing of the coordinate system
         // X-axis points forward, Y-axis to the right and Z-axis downward
-        package.values[0] = -ax*100;
-        package.values[1] = -ay*100;
-        package.values[2] = az*100;
+        ImuAndFingersPackage imuAndFingersPackage;
+        imuAndFingersPackage.values.imu[0] = -ax*100;
+        imuAndFingersPackage.values.imu[1] = -ay*100;
+        imuAndFingersPackage.values.imu[2] = az*100;
 
         // Now send the adjusted rotation data (yaw has now been fixed in library to be +-180 like the rest)
         // X-axis points forward, Y-axis to the right and Z-axis downward
-        package.values[3] = -filter.getRoll();
-        package.values[4] = -filter.getPitch();
-        package.values[5] = filter.getYaw();
+        imuAndFingersPackage.values.imu[3] = -filter.getRoll();
+        imuAndFingersPackage.values.imu[4] = -filter.getPitch();
+        imuAndFingersPackage.values.imu[5] = filter.getYaw();
 
         // Now send the fingers yo!
-        // TODO
+        // Values are between 0 and 200 (the analog readings should be 500-700)
+        imuAndFingersPackage.values.fingers[0] = analogRead(A0) - 500;
+        imuAndFingersPackage.values.fingers[1] = analogRead(A1) - 500;
+        imuAndFingersPackage.values.fingers[2] = analogRead(A2) - 500;
+        imuAndFingersPackage.values.fingers[3] = analogRead(A3) - 500;
+        imuAndFingersPackage.values.fingers[4] = analogRead(A4) - 500;
 
         // Also send quaternion data in the adjusted order for those that dare listen
         // THREE JS Coordinate System where X-axis points to the right, Y-axis upward and Z-axis backward
-        FloatPackage quaternions;
-        quaternions.values[0] = filter.q1;
-        quaternions.values[1] = filter.q0;
-        quaternions.values[2] = filter.q2;
-        quaternions.values[3] = filter.q3;
+        QuaternionsPackage quaternionsPackage;
+        quaternionsPackage.values[0] = filter.q1;
+        quaternionsPackage.values[1] = filter.q0;
+        quaternionsPackage.values[2] = filter.q2;
+        quaternionsPackage.values[3] = filter.q3;
 
-        // Printing raw data to serial port
-        Serial.print("MS: ");
-        Serial.print(filter.invSampleFreq);
-        Serial.print(" | GX: ");
-        Serial.print(gx);
-        Serial.print(" | GY: ");
-        Serial.print(gy);
-        Serial.print(" | GZ: ");
-        Serial.println(gz);
-
-        characteristic.writeValue(package.bytes, 12);
-        characteristicQuaternions.writeValue(quaternions.bytes, 16);
+        // Finally send it all out
+        characteristicImuAndFingers.writeValue(imuAndFingersPackage.bytes, 17);
+        characteristicQuaternions.writeValue(quaternionsPackage.bytes, 16);
       }
     }
     // when the central disconnects, switch the LED off
