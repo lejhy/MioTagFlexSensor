@@ -88,9 +88,9 @@ void loop() {
         // Send accelerometer edited to correspond to our little reordering and fixing of the coordinate system
         // X-axis points forward, Y-axis to the right and Z-axis downward
         ImuAndFingersPackage imuAndFingersPackage;
-        imuAndFingersPackage.values.imu[0] = -ax*100;
-        imuAndFingersPackage.values.imu[1] = -ay*100;
-        imuAndFingersPackage.values.imu[2] = az*100;
+        imuAndFingersPackage.values.imu[0] = ax*100;
+        imuAndFingersPackage.values.imu[1] = ay*100;
+        imuAndFingersPackage.values.imu[2] = -az*100;
 
         // Now send the adjusted rotation data (yaw has now been fixed in library to be +-180 like the rest)
         // X-axis points forward, Y-axis to the right and Z-axis downward
