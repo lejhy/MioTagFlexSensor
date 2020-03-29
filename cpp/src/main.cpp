@@ -30,10 +30,6 @@ unsigned int fingerReadings[5];
 
  // Two calibration values (low and high) for each finger with low cap set to MAX and high cap set to MIN
 unsigned int fingerCalibration[5][2];
-for(int i = 0; i < 5; i++) {
-  fingerCalibration[i][0] = 4095;
-  fingerCalibration[i][1] = 0;
-}
 
 //defines the services used
 BLEService service("19B10000-E8F2-537E-4F6C-D104768A1214");
@@ -69,6 +65,11 @@ void setup() {
   filter.beta = 0.3;
   // start timer
   micros_previous_reading = micros();
+  // initialise the calibration values
+  for(int i = 0; i < 5; i++) {
+    fingerCalibration[i][0] = 4095;
+    fingerCalibration[i][1] = 0;
+  }
 }
 
 void processSensorReadings() {
