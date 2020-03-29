@@ -21,6 +21,13 @@ union QuaternionsPackage {
 Madgwick filter;
 unsigned long micros_previous_reading;
 
+ // Two calibration values (low and high) for each finger with low cap set to MAX and high cap set to MIN
+unsigned int fingerCalibration[5][2];
+for(int i = 0; i < 5; i++) {
+  fingerCalibration[i][0] = 4095;
+  fingerCalibration[i][1] = 0;
+}
+
 //defines the services used
 BLEService service("19B10000-E8F2-537E-4F6C-D104768A1214");
 
@@ -99,12 +106,24 @@ void loop() {
         imuAndFingersPackage.values.imu[5] = filter.getYaw();
 
         // Now send the fingers yo!
-        // Values are between 0 and 200 (the analog readings should be 500-700)
-        imuAndFingersPackage.values.fingers[0] = analogRead(A0) - 500;
-        imuAndFingersPackage.values.fingers[1] = analogRead(A1) - 500;
-        imuAndFingersPackage.values.fingers[2] = analogRead(A2) - 500;
-        imuAndFingersPackage.values.fingers[3] = analogRead(A3) - 500;
-        imuAndFingersPackage.values.fingers[4] = analogRead(A4) - 500;
+        // Values are between 0 and 200 (the analog readings need to be calibrated)
+        unsigned int fingerReadings[5];
+        fingerReadings[0] = analogRead(A0);
+        fingerReadings[1] = analogRead(A1);
+        fingerReadings[2] = analogRead(A2);
+        fingerReadings[3] = analogRead(A3);
+        fingerReadings[4] = analogRead(A4);
+        for(int i = 0; i < 5; i++) {
+          fingerCalibration[i][0] = min(fingerCalibration[i][0], fingerReadings[i]);
+          fingerCalibration[i][1] = max(fingerCalibration[i][1], fingerReadings[i]);
+          imuAndFingersPackage.values.fingers[i] = map(
+            fingerReadings[i],
+            fingerCalibration[i][0],
+            fingerCalibration[i][1],
+            0,
+            200
+          );
+        }
 
         // Also send quaternion data in the adjusted order for those that dare listen
         // THREE JS Coordinate System where X-axis points to the right, Y-axis upward and Z-axis backward
