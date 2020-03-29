@@ -87,9 +87,9 @@ void processSensorReadings() {
   
   // The the analog readings need to be calibrated
   fingerReadings[0] = analogRead(A4);
-  fingerReadings[1] = analogRead(A1);
+  fingerReadings[1] = analogRead(A3);
   fingerReadings[2] = analogRead(A2);
-  fingerReadings[3] = analogRead(A3);
+  fingerReadings[3] = analogRead(A1);
   fingerReadings[4] = analogRead(A0);
   for(int i = 0; i < 5; i++) {
     fingerCalibration[i][0] = min(fingerCalibration[i][0], fingerReadings[i]);
